@@ -1,11 +1,17 @@
 from data_load import load_and_preprocess_data, generate_dict
 import os
+import pandas as pd
 import numpy as np
 from Workplaces import Workplaces
 from Households import Households
 from Schools import Schools
-
-
+from collections import defaultdict
+from Place import Place
+import datetime
+import warnings
+warnings.filterwarnings('ignore')
+pd.options.display.width = None
+pd.options.display.max_columns = None
 
 def main(number_seed, output_folder):
     np.random.seed(number_seed)
@@ -16,11 +22,12 @@ def main(number_seed, output_folder):
     susceptible.loc[susceptible.sp_id.isin(I0), 
                     ['infected', 'susceptible', 'illness_day', 'illness_max']] = [1, 0, 1, 7]
 
+    print(susceptible[susceptible.sp_id.isin(I0)])
     # для истории заражения
     #    
     #    id_susceptible_list, latitude_list, longitude_list, \ 
     #    type_list, id_place_list, days_inf, \
-    #    infected, incidence_infected, incubation, incidence_incubation = [], [], [], [], [], [], [], [], []
+    infected, incidence_infected, incubation, incidence_incubation = [], [], [], []
     
     for i in susceptible[
                         (susceptible.infected == 1) & (susceptible.age > 17) & 
@@ -31,6 +38,9 @@ def main(number_seed, output_folder):
                         (susceptible.infected == 1) & (susceptible.age <= 17) & 
                         (susceptible.work_id != 'X')].groupby('work_id').sp_id:
         [dict_school_id[i[0]].remove(j) for j in list(i[1])]
+        
+    for i in susceptible[(susceptible.infected == 1)].groupby('sp_hh_id').sp_id:
+        [dict_hh_id[i[0]].remove(j) for j in list(i[1])]
 
 
     # тесты, что все заболевшие удалены
@@ -48,7 +58,9 @@ def main(number_seed, output_folder):
     houses_class = Households(lmbd, households, dict_hh_id, dict_hh_len)
     works_class = Workplaces(lmbd, workplaces, dict_work_id, dict_work_len)
     schools_class = Schools(lmbd, schools, dict_school_id, dict_school_len)
-
+    place = Place(lmbd, schools, dict_school_id, dict_school_len)
+    
+    
     for day in range(days):
         curr = susceptible[susceptible.infected == 1]
         hh_inf, work_inf, school_inf = defaultdict(list), defaultdict(list), defaultdict(list)
@@ -62,14 +74,15 @@ def main(number_seed, output_folder):
                 else:
                     school_inf[row.work_id].append(row.illness_day)
 
-        houses_class.place_inf(hh_inf)
-        works_class.place_inf(work_inf)
-        schools_class.place_inf(school_inf)
 
-        real_inf_hh = houses_class.real_inf()
+        houses_class.set_place_inf(hh_inf)
+        works_class.set_place_inf(work_inf)
+        schools_class.set_place_inf(school_inf)
+
+        real_inf_hh = houses_class.real_inf(susceptible)
         real_inf_work = works_class.real_inf()
         real_inf_school = schools_class.real_inf()
-
+        
         # реально заразившиеся
         real_inf = np.concatenate((real_inf_hh, real_inf_school, real_inf_work))
         real_inf = np.unique(real_inf.astype(int))
@@ -86,21 +99,26 @@ def main(number_seed, output_folder):
                     ] = [1, 0, 7, 7]
 
         # удаление заразившихся из восприимчивых
+        #########################################
         houses_class.clean_place(zip(real_inf.sp_hh_id, real_inf.sp_id)) 
         works_class.clean_place(zip(inf_work.work_id, inf_work.sp_id)) 
         schools_class.clean_place(zip(inf_school.work_id, inf_school.sp_id)) 
 
-
-        curr_incubation = len(susceptible[(susceptible.incubation_day == 0) & (susceptible.incubation == 1)])
-        newly_incubation = int(susceptible[['incubation']].sum())
-        curr_infected = len(susceptible[(susceptible.incubation_day == 0) & (susceptible.incubation == 1)])
-        newly_infected = int(susceptible[['infected']].sum())
+        #TODO: считать incidence до обновления счетчиков или после?
+        newly_incubation = len(susceptible[(susceptible.incubation_day == 0) & (susceptible.incubation == 1)])
+        curr_incubation = int(susceptible[['incubation']].sum())
+        newly_infected = len(susceptible[(susceptible.illness_day == 1) & (susceptible.infected == 1)])
+        curr_infected = int(susceptible[['infected']].sum())
 
         infected.append(curr_infected)
         incidence_infected.append(newly_infected)
         incubation.append(curr_incubation)
         incidence_incubation.append(newly_incubation)
 
+        pd.DataFrame(infected).to_csv(out_path +f"prevalence_{number_seed}.csv")
+        pd.DataFrame(incidence_infected).to_csv(out_path + f"incidence_{number_seed}.csv")
+        pd.DataFrame(incubation).to_csv(out_path + f"prevalence_incubation_{number_seed}.csv")
+        pd.DataFrame(incidence_incubation).to_csv(out_path + f"incidence_incubation_{number_seed}.csv")  
 
         # обновление параметров
         susceptible.loc[susceptible.infected == 1, 'illness_day'] += 1
@@ -112,14 +130,12 @@ def main(number_seed, output_folder):
                 ['infected', 'illness_day', 'incubation', 'incubation_day']
                         ] = [1, 1, 0, 0]
 
-        print(number_seed, j, curr_incubation, 
+        print(number_seed, day, curr_incubation, 
             newly_incubation, curr_infected, newly_infected, 
             datetime.datetime.now())
         print()
-
-    #pd.DataFrame(results).to_csv(f"../prevalence_{number_seed}.csv")
-    #pd.DataFrame(incidence).to_csv(f"../incidence_{number_seed}.csv")
-    return results
+  
+    return infected, incubation
 
 
 
@@ -127,7 +143,7 @@ if __name__ == '__main__':
     alpha =0.78
     lmbd = 0.17
     init_infected = 10
-    days = 10      
+    days = 150    
 
     data_folder = 'chelyabinsk_1/'
     data_path = './data/' + data_folder

@@ -1,11 +1,11 @@
 from Place import Place
-
+import numpy as np
 
 
 class Workplaces(Place):
 
-    def __init__(self, x_size, lmbd, location, place_id, place_len, vfunc):
-        super(x_size, lmbd, location, place_id, place_len, vfunc)
+    def __init__(self, lmbd, location, place_id, place_len):
+        super().__init__(lmbd, location, place_id, place_len)
         self.x_len=10000
 
     def prob(self, temp):
