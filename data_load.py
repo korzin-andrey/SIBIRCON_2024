@@ -26,7 +26,7 @@ def load_and_preprocess_data(data_path):
     # подготовка загруженных данных
     data[['sp_id', 'sp_hh_id', 'age']] = data[['sp_id', 'sp_hh_id', 'age']].astype(int)
     data[['work_id']] = data[['work_id']].astype(str)
-    data = data.sample(frac=1)
+    #data = data.sample(frac=1)
 
     households[['sp_id']] = households[['sp_id']].astype(int)
     households[['latitude', 'longitude']] = households[['latitude', 'longitude']].astype(float)
