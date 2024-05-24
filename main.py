@@ -13,14 +13,16 @@ from Places import Households, Place, Schools, Workplaces
 import time
 from tqdm import tqdm
 
+#import cProfile
+
 def main(number_seed, output_folder):
     np.random.seed(number_seed)
-
+    #tot = 0
     # выбор первоначально инфецированных
     I0 = np.random.choice(susceptible.sp_id, init_infected, replace=False)
 
     susceptible.loc[susceptible.sp_id.isin(I0), 
-                    ['infected', 'susceptible', 'illness_day', 'illness_max']] = [1, 0, 3, 9]
+                    ['infected', 'susceptible', 'illness_day', 'illness_max']] = [1, 0, 3, 8]
 
 
     # для истории заражения
@@ -31,12 +33,12 @@ def main(number_seed, output_folder):
     
     for i in susceptible[
                         (susceptible.infected == 1) & (susceptible.age > 17) & 
-                        (susceptible.work_id != 'X')].groupby('work_id').sp_id:
+                        (susceptible.work_id != 0)].groupby('work_id').sp_id:
         [dict_work_id[i[0]].remove(j) for j in list(i[1])]     
 
     for i in susceptible[
                         (susceptible.infected == 1) & (susceptible.age <= 17) & 
-                        (susceptible.work_id != 'X')].groupby('work_id').sp_id:
+                        (susceptible.work_id != 0)].groupby('work_id').sp_id:
         [dict_school_id[i[0]].remove(j) for j in list(i[1])]
         
     for i in susceptible[(susceptible.infected == 1)].groupby('sp_hh_id').sp_id:
@@ -65,17 +67,33 @@ def main(number_seed, output_folder):
             x_rand = np.random.rand( 1_000_000 )
             curr = susceptible[susceptible.infected == 1]
             hh_inf, work_inf, school_inf = defaultdict(list), defaultdict(list), defaultdict(list)
-
+            #s_tot = time.perf_counter()
+            index = curr.index.to_numpy()
+            ill_day = curr.illness_day.to_numpy()
+            curr_hh = hh_id[index]
+            curr_work = work_id[index]
+            curr_school = school_id[index]
 
             # добавление дня заболевания по id места, где есть больные
-            for _, row in curr.iterrows():
-                hh_inf[row.sp_hh_id].append(row.illness_day)
-                if row.work_id != 'X':
-                    if row.age > 17:
-                        work_inf[row.work_id].append(row.illness_day)
-                    else:
-                        school_inf[row.work_id].append(row.illness_day)
+            # 8.693490803999339 - весь цикл длиться
+            # 3.923998731042957 - длительность внутренности цикла
+            #for _, row in curr.iterrows():
+            #    s_tot = time.perf_counter()
+            #    hh_inf[row.sp_hh_id].append(row.illness_day)
+            #    if row.work_id != 0:
+            #        if row.age > 17:
+            #            work_inf[row.work_id].append(row.illness_day)
+            #        else:
+            #            school_inf[row.work_id].append(row.illness_day)
 
+            for day, hh, work, school in zip(ill_day, curr_hh, curr_work, curr_school):
+                hh_inf[hh].append(day)
+                if work != 0:
+                    work_inf[work].append(day)
+                if school != 0:
+                    school_inf[school].append(day)
+
+            #tot += time.perf_counter() - s_tot
 
 
             houses_class.set_place_inf(hh_inf)
@@ -90,9 +108,9 @@ def main(number_seed, output_folder):
             real_inf = np.concatenate((real_inf_hh, real_inf_school, real_inf_work))
             real_inf = np.unique(real_inf.astype(int))
             real_inf = susceptible[(susceptible.sp_id.isin(real_inf))]
-            inf_work = real_inf[(susceptible.work_id != 'X') 
+            inf_work = real_inf[(susceptible.work_id != 0) 
                                 & (susceptible.age > 17)]
-            inf_school = real_inf[(susceptible.work_id != 'X') 
+            inf_school = real_inf[(susceptible.work_id != 0) 
                                 & (susceptible.age <= 17)]
 
             # задание параметров заразившимся
@@ -136,7 +154,7 @@ def main(number_seed, output_folder):
         #    newly_incubation, curr_infected, newly_infected, 
         #    datetime.datetime.now())
         #print()
-  
+    #print(tot)
     return infected, incubation
 
 
@@ -154,12 +172,22 @@ if __name__ == '__main__':
 
     # получаем данные
     people, households, workplaces, schools = load_and_preprocess_data(data_path)
-
     # задаем невосприимчивых и датафрэйм восприимчивых
     people.loc[
         np.random.choice(people.index, round(len(people) * alpha), replace=False), 
         'susceptible'] = 1
     susceptible = people[people.susceptible == 1]
+    susceptible.index = range(len(susceptible))
+    susceptible.index = susceptible.index.astype(np.int32)
+    hh_id = susceptible.sp_hh_id.to_numpy()
+    work_id = susceptible.work_id.to_numpy()
+    age = susceptible.age.to_numpy()
+    school_id = np.copy(work_id)
+    work_id = np.copy(work_id)
+    school_id[age>17] = 0
+    school_id[age<7] = 0
+    work_id[age<18] = 0
+
 
     # создаем словари восприимчивых
     dict_hh_id, dict_hh_len, dict_work_id, \
@@ -174,8 +202,8 @@ if __name__ == '__main__':
 
     start_all = time.perf_counter()
     
+    #cProfile.run("main(1, out_path)")
     main(1, out_path)
-    
     print(time.perf_counter() - start_all)
     
 

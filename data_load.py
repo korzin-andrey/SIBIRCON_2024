@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 # в папке по пути data_path должны находиться файлы: 
 #   -- people.txt
@@ -25,7 +26,7 @@ def load_and_preprocess_data(data_path):
 
     # подготовка загруженных данных
     data[['sp_id', 'sp_hh_id', 'age']] = data[['sp_id', 'sp_hh_id', 'age']].astype(int)
-    data[['work_id']] = data[['work_id']].astype(str)
+    data[['work_id']] = data[['work_id']].replace('X', 0).astype(int)
     #data = data.sample(frac=1)
 
     households[['sp_id']] = households[['sp_id']].astype(int)
@@ -53,20 +54,20 @@ def load_and_preprocess_data(data_path):
 def generate_dict(data):
     # словарь с ключами - id домовладения, а значения - id жителей
     #TODO: так как эта колонка приводится к int, то ключ - int
-    dict_hh_id = {i[0]: list(i[1].sp_id) 
-            for i in data.groupby("sp_hh_id")}
+    dict_hh_id = {i[0]: list(i[1]) 
+            for i in data.groupby("sp_hh_id").sp_id}
     dict_hh_len = {i: len(dict_hh_id[i]) for i in dict_hh_id.keys()}
 
     # словарь с ключами - id работы, а значения - id работающих людей
     #TODO: так как эта колонка str, то ключ - str
-    dict_work_id = {i[0]: list(i[1].sp_id) 
-            for i in data[(data.age>=18)&(data.work_id!='X')].groupby("work_id")}
+    dict_work_id = {i[0]: list(i[1]) 
+            for i in data[(data.age>=18)&(data.work_id!=0)].groupby("work_id").sp_id}
     dict_work_len = {i: len(dict_work_id[i]) for i in dict_work_id.keys()}
 
     # словарь с ключами - id школы, а значения - id учеников
     #TODO: так как эта колонка str, то ключ - str
-    dict_school_id = {i[0]: list(i[1].sp_id) 
-            for i in data[(data.age<18)&(data.work_id!='X')].groupby("work_id")}
+    dict_school_id = {i[0]: list(i[1]) 
+            for i in data[(data.age<18)&(data.work_id!=0)].groupby("work_id").sp_id}
     dict_school_len = {i: len(dict_school_id[i]) for i in dict_school_id.keys()}
 
     return dict_hh_id, dict_hh_len, dict_work_id, dict_work_len, dict_school_id, dict_school_len

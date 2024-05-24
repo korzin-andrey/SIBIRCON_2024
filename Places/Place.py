@@ -36,7 +36,7 @@ class Place:
 
         real_inf_place = np.array([])
         for i in self.place_inf:
-            
+           
             # текущее количество восприимчивых
             place_len = len(self.dict_place_id[i])
 
