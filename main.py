@@ -100,29 +100,29 @@ def main(number_seed, output_folder):
             works_class.set_place_inf(work_inf)
             schools_class.set_place_inf(school_inf)
 
-            real_inf_hh = houses_class.real_inf(x_rand)
-            real_inf_work = works_class.real_inf(x_rand)
-            real_inf_school = schools_class.real_inf(x_rand)
+            infected_id_hh = houses_class.infection(x_rand)
+            infected_id_work = works_class.infection(x_rand)
+            infected_id_school = schools_class.infection(x_rand)
         
             # реально заразившиеся
-            real_inf = np.concatenate((real_inf_hh, real_inf_school, real_inf_work))
-            real_inf = np.unique(real_inf.astype(int))
-            real_inf = susceptible[(susceptible.sp_id.isin(real_inf))]
-            inf_work = real_inf[(susceptible.work_id != 0) 
+            infected_id = np.concatenate((infected_id_hh, infected_id_work, infected_id_school))
+            infected_id = np.unique(infected_id.astype(int))
+            infected_people = susceptible[(susceptible.sp_id.isin(infected_id))]
+            infected_work = infected_people[(susceptible.work_id != 0) 
                                 & (susceptible.age > 17)]
-            inf_school = real_inf[(susceptible.work_id != 0) 
+            infected_school = infected_people[(susceptible.work_id != 0) 
                                 & (susceptible.age <= 17)]
 
             # задание параметров заразившимся
             susceptible.loc[            
-                real_inf.index, 
+                infected_people.index, 
                 ['incubation', 'susceptible', 'incubation_max', 'illness_max']
-                        ] = [1, 0, 0, 7]
+                        ] = [1, 0, 0, 8]
 
             # удаление заразившихся из восприимчивых
-            houses_class.clean_place(zip(real_inf.sp_hh_id, real_inf.sp_id)) 
-            works_class.clean_place(zip(inf_work.work_id, inf_work.sp_id)) 
-            schools_class.clean_place(zip(inf_school.work_id, inf_school.sp_id)) 
+            houses_class.clean_place(zip(infected_people.sp_hh_id, infected_people.sp_id)) 
+            works_class.clean_place(zip(infected_work.work_id, infected_work.sp_id)) 
+            schools_class.clean_place(zip(infected_school.work_id, infected_school.sp_id)) 
 
         #TODO: считать incidence до обновления счетчиков или после?
         newly_incubation = len(susceptible[(susceptible.incubation_day == 0) & (susceptible.incubation == 1)])

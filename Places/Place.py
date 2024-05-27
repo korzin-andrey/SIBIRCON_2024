@@ -8,9 +8,8 @@ class Place:
     Args:
         lmbd             (int):     вирулентность
         location         (pd.DataFrame):    содержит	sp_id	 latitude	 longitude	  size
-        dict_place_id    (dict):    словарь с ключами - id места, а значения - id тех, кто там находится          
-        dict_place_len   (dict):    словарь с ключами - id места, а значения - общее количество людей
-        vfunc            (np.vectorize):    векторизованная функция вычисления заразности человека
+        place_id    (dict):    словарь с ключами - id места, а значения - id тех, кто там находится          
+        place_len   (dict):    словарь с ключами - id места, а значения - общее количество людей
     '''
 
 
@@ -32,7 +31,7 @@ class Place:
         self.place_inf=place_inf
         return True
         
-    def real_inf(self, x_rand):
+    def infection(self, x_rand):
 
         real_inf_place = np.array([])
         for i in self.place_inf:
@@ -54,9 +53,8 @@ class Place:
 
                 # количество реально заразившихся людей
                 real_inf = len(place_rand[place_rand < prob])
+                real_inf = place_len if place_len < real_inf else real_inf
 
-                if place_len < real_inf:
-                    real_inf = place_len
 
                 real_inf_id = np.random.choice(np.array(self.dict_place_id[i]), real_inf, replace=False)
                 real_inf_place = np.concatenate((real_inf_place, real_inf_id))
