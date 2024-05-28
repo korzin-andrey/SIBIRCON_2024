@@ -79,11 +79,11 @@ def main(number_seed, output_folder):
     work, to_main_work = Pipe() # с работы в главный
     school, to_main_school = Pipe() # из школы в главный
 
-    main_process = Process(target = main_pool,
-            args = (Agree, main_to_hh, main_to_school, 
-            to_main_hh, to_main_work, to_main_school,
-            barrier, days, susceptible, out_path, number_seed)
-                        )
+    #main_process = Process(target = main_pool,
+    #        args = (Agree, main_to_hh, main_to_school, 
+    #        to_main_hh, to_main_work, to_main_school,
+    #        barrier, days, susceptible, out_path, number_seed)
+    #                    )
 
     hh_process = Process(target = hh_pool,
             args = (Agree, from_main_to_hh, hh_to_work, 
@@ -100,15 +100,14 @@ def main(number_seed, output_folder):
             school, days, school_id, schools_class)
                             )
 
-    main_process.start()
+    
     hh_process.start()
     work_process.start()
     school_process.start()
 
-    main_process.join()
-    hh_process.join()
-    work_process.join()
-    school_process.join()
+    main_pool(Agree, main_to_hh, main_to_school, 
+            to_main_hh, to_main_work, to_main_school,
+            barrier, days, susceptible, out_path, number_seed)
 
 
 
