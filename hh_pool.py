@@ -7,7 +7,7 @@ def hh_pool(Agree, from_main_to_hh, hh_to_work, barrier, hh, days, hh_id, houses
         x_rand = np.random.rand(1000000)
 
         barrier.wait()   # ожидаем создание индекса
-    
+        print(day)
         if Agree.value == 1:
             hh_inf = defaultdict(list)
 
@@ -25,8 +25,8 @@ def hh_pool(Agree, from_main_to_hh, hh_to_work, barrier, hh, days, hh_id, houses
 
             curr_hh = hh_id[index]
 
-            for day, HH in zip(ill_day, curr_hh):
-                hh_inf[HH].append(day)
+            for Day, HH in zip(ill_day, curr_hh):
+                hh_inf[HH].append(Day)
 
             houses_class.set_place_inf(hh_inf)
 
@@ -39,4 +39,3 @@ def hh_pool(Agree, from_main_to_hh, hh_to_work, barrier, hh, days, hh_id, houses
             hh_to_work.send(infected_people)
 
             houses_class.clean_place(zip(infected_people.sp_hh_id, infected_people.sp_id))
-    return 0 

@@ -9,7 +9,7 @@ def main_pool(
         barrier, days, susceptible, out_path, number_seed):
 
     infected, incidence_infected, incubation, incidence_incubation = [], [], [], []
-    s_tot = time.perf_counter()
+
     for day in range(days):
         if len(susceptible[susceptible.illness_day > 2]) != 0:
 
@@ -62,6 +62,7 @@ def main_pool(
 
         else:
             Agree.value = 0
+            barrier.wait()
 
         newly_incubation = len(susceptible[(susceptible.incubation_day == 0) & (susceptible.incubation == 1)])
         curr_incubation = int(susceptible[['incubation']].sum())
@@ -92,5 +93,3 @@ def main_pool(
             newly_incubation, curr_infected, newly_infected, 
             datetime.datetime.now())
         print()
-    print(time.perf_counter() - s_tot)
-    return 0

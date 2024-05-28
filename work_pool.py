@@ -19,9 +19,9 @@ def work_pool(Agree, from_hh_to_work, barrier, work, days, work_id, works_class)
 
             curr_work = work_id[index]
 
-            for day, hh_id in zip(ill_day, curr_work):
+            for Day, hh_id in zip(ill_day, curr_work):
                 if hh_id!=0:
-                    work_inf[hh_id].append(day)
+                    work_inf[hh_id].append(Day)
 
             works_class.set_place_inf(work_inf)
 
@@ -35,4 +35,3 @@ def work_pool(Agree, from_hh_to_work, barrier, work, days, work_id, works_class)
                                 & (infected_people.age > 17)]
 
             works_class.clean_place(zip(infected_work.work_id, infected_work.sp_id)) 
-    return 0

@@ -19,9 +19,9 @@ def school_pool(Agree, from_main_to_school, barrier, school, days, school_id, sc
 
             curr_school = school_id[index]
 
-            for day, hh_id in zip(ill_day, curr_school):
+            for Day, hh_id in zip(ill_day, curr_school):
                 if hh_id!=0:
-                    school_inf[hh_id].append(day)
+                    school_inf[hh_id].append(Day)
 
             schools_class.set_place_inf(school_inf)
 
@@ -33,4 +33,3 @@ def school_pool(Agree, from_main_to_school, barrier, school, days, school_id, sc
             infected_school = from_main_to_school.recv()
 
             schools_class.clean_place(zip(infected_school.work_id, infected_school.sp_id)) 
-    return 0
