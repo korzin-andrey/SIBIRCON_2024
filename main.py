@@ -14,6 +14,11 @@ import time
 from tqdm import tqdm
 
 #import cProfile
+from multiprocessing import Process, Pipe, Value, Barrier
+from school_pool import school_pool
+from main_pool import main_pool
+from work_pool import work_pool
+from hh_pool import hh_pool
 
 def main(number_seed, output_folder):
     np.random.seed(number_seed)
@@ -62,6 +67,50 @@ def main(number_seed, output_folder):
     schools_class = Schools(lmbd, schools, dict_school_id, dict_school_len)
     
     
+    Agree = Value('d', 0)
+    barrier = Barrier(4,)
+
+    # 
+    main_to_hh, from_main_to_hh = Pipe() # из главного цикла в дома
+    hh_to_work, from_hh_to_work = Pipe() # из домов на работы
+    main_to_school, from_main_to_school = Pipe() # из главного в школы
+
+    hh, to_main_hh = Pipe() # из домов в главный
+    work, to_main_work = Pipe() # с работы в главный
+    school, to_main_school = Pipe() # из школы в главный
+
+    main_process = Process(target = main_pool,
+            args = (Agree, main_to_hh, main_to_school, 
+            to_main_hh, to_main_work, to_main_school,
+            barrier, days, susceptible, out_path, number_seed)
+                        )
+
+    hh_process = Process(target = hh_pool,
+            args = (Agree, from_main_to_hh, hh_to_work, 
+            barrier, hh, days, hh_id, houses_class)
+                        )
+
+    work_process = Process(target = work_pool,
+            args = (Agree, from_hh_to_work, barrier, 
+            work, days, work_id, works_class)
+                        )
+
+    school_process = Process(target = school_pool,
+            args = (Agree, from_main_to_school, barrier,
+            school, days, school_id, schools_class)
+                            )
+
+    main_process.start()
+    hh_process.start()
+    work_process.start()
+    school_process.start()
+
+    main_process.join()
+    hh_process.join()
+    work_process.join()
+    school_process.join()
+
+    '''
     for day in tqdm(range(days)):
         if len(susceptible[susceptible.illness_day > 2]) != 0:
             x_rand = np.random.rand( 1_000_000 )
@@ -156,7 +205,7 @@ def main(number_seed, output_folder):
         #print()
     #print(tot)
     return infected, incubation
-
+    '''
 
 
 if __name__ == '__main__':
