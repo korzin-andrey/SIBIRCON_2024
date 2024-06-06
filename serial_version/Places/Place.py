@@ -21,11 +21,12 @@ class Place:
         self.vfunc = None  # векторизованная функция вычисления заразности человека
         self.place_inf = None
         self.x_rand = np.random.rand(10_000_000)
+        self.number_of_contacts = 3
 
         real_inf_place = None
 
     def prob(self, temp):
-        return np.repeat(temp, 3) * self.lmbd
+        return np.repeat(temp, self.number_of_contacts) * self.lmbd
 
     def set_place_inf(self, place_inf):
         self.place_inf = place_inf
@@ -45,7 +46,6 @@ class Place:
 
                 # we don't use BR function here
                 temp = np.ones(len(self.place_inf[i]))
-                # temp = 1
 
                 # вероятность заражения подверженных
                 prob = self.prob(temp)

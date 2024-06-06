@@ -3,7 +3,7 @@ import numpy as np
 
 def pick_incubation_period(number_of_people):
     incubation_period_min = 2
-    incubation_period_max = 14
+    incubation_period_max = 11
     return np.random.randint(incubation_period_min, incubation_period_max, number_of_people)
 
 
