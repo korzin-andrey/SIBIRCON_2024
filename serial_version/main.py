@@ -93,6 +93,17 @@ def main(number_seed, output_folder):
             infected_id = np.unique(infected_id.astype(int))
             infected_people = susceptible[(
                 susceptible.sp_id.isin(infected_id))]
+            print("Infected:", len(infected_people))
+
+            infected_households = households.loc[households['sp_id'].isin(
+                infected_people['sp_hh_id'].to_list()), :]
+            output_coordinates = pd.DataFrame(
+                columns=['latitude', 'longitude'])
+            output_coordinates['latitude'] = infected_households['latitude']
+            output_coordinates['longitude'] = infected_households['longitude']
+            output_coordinates.to_csv(
+                out_path + r'coords/day_{}'.format(day), sep='\t', index=False)
+
             infected_work = infected_people[(susceptible.work_id != 0)
                                             & (susceptible.age > 17)]
             infected_school = infected_people[(susceptible.work_id != 0)
@@ -160,9 +171,9 @@ if __name__ == '__main__':
     alpha = 0.78
     lmbd = 0.17
     init_infected = 10
-    days = 150
+    days = 30
 
-    data_folder = 'chelyabinsk/'
+    data_folder = 'spb/'
     data_path = './data/' + data_folder
     out_path = './results/' + data_folder
 
