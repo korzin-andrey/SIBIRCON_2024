@@ -9,6 +9,9 @@ import numpy as np
 from collections import defaultdict
 import datetime
 import warnings
+from functools import partial
+import multiprocessing as mp
+from multiprocessing import Process, Queue, current_process, freeze_support
 warnings.filterwarnings('ignore')
 pd.options.display.width = None
 pd.options.display.max_columns = None
@@ -17,7 +20,9 @@ pd.options.display.max_columns = None
 # import cProfile
 
 
-def main(number_seed, output_folder):
+def main(number_seed, out_path, susceptible, alpha, lmbd, init_infected, days,
+         dict_work_id, dict_hh_id, dict_school_id, households, people, workplaces, schools,
+         dict_hh_len, dict_work_len, dict_school_len, hh_id, work_id, school_id, age):
     # np.random.seed(number_seed)
     # choose initial infectious sp_id
     I0 = np.random.choice(susceptible.sp_id, init_infected, replace=False)
@@ -30,6 +35,12 @@ def main(number_seed, output_folder):
     #    id_susceptible_list, latitude_list, longitude_list, \
     #    type_list, id_place_list, days_inf, \
     infected, incidence_infected, incubation, incidence_incubation = [], [], [], []
+
+    infected.append(len(I0))
+    incidence_infected.append(len(I0))
+    incubation.append(len(I0))
+    incidence_incubation.append(len(I0))
+
 
     for i in susceptible[
             (susceptible.infected == 1) & (susceptible.age > 17) &
@@ -62,7 +73,7 @@ def main(number_seed, output_folder):
 
     for day in tqdm(range(days)):
         if len(susceptible[susceptible.illness_day > 2]) != 0:
-            x_rand = np.random.rand(100_000_000)
+            x_rand = np.random.rand(10_000_000)
             curr = susceptible[susceptible.infected == 1]
             hh_inf, work_inf, school_inf = defaultdict(
                 list), defaultdict(list), defaultdict(list)
@@ -132,13 +143,13 @@ def main(number_seed, output_folder):
         incubation.append(curr_incubation)
         incidence_incubation.append(newly_incubation)
 
-        pd.DataFrame(infected).to_csv(
+        pd.DataFrame(infected, columns=['data']).to_csv(
             out_path + f"prevalence_{number_seed}.csv")
-        pd.DataFrame(incidence_infected).to_csv(
+        pd.DataFrame(incidence_infected, columns=['data']).to_csv(
             out_path + f"incidence_{number_seed}.csv")
-        pd.DataFrame(incubation).to_csv(
+        pd.DataFrame(incubation, columns=['data']).to_csv(
             out_path + f"prevalence_incubation_{number_seed}.csv")
-        pd.DataFrame(incidence_incubation).to_csv(
+        pd.DataFrame(incidence_incubation, columns=['data']).to_csv(
             out_path + f"incidence_incubation_{number_seed}.csv")
 
         # обновление параметров
@@ -152,17 +163,17 @@ def main(number_seed, output_folder):
             ['infected', 'illness_day', 'incubation', 'incubation_day']
         ] = [1, 1, 0, 0]
 
-    return infected, incubation
+    return infected, incidence_infected
 
 
 if __name__ == '__main__':
     np.random.seed(1)
-    alpha = 0.78
-    lmbd = 0.17
+    alpha = 0.39908850920111993
+    lmbd = 0.4
     init_infected = 10
-    days = 150
+    days = 130
 
-    data_folder = 'chelyabinsk/'
+    data_folder = 'spb/'
     data_path = './data/' + data_folder
     out_path = './results/' + data_folder
 
@@ -200,5 +211,30 @@ if __name__ == '__main__':
 
     start_all = time.perf_counter()
 
-    main(1, out_path)
+    epid_data = pd.read_csv(
+        './epid_data/SPb.COVID-19.united.csv')['CONFIRMED.sk'][670:770]
+    init_infected = epid_data.to_list()[0]
+    def simulation(number_of_launches):
+        with mp.Pool(number_of_launches) as pool:
+            output = pool.map(partial(main, out_path=out_path, susceptible=susceptible, alpha=alpha,
+                                      lmbd=lmbd, init_infected=init_infected, days=days,
+                                      dict_work_id=dict_work_id, dict_hh_id=dict_hh_id, dict_school_id=dict_school_id,
+                                      households=households, people=people, workplaces=workplaces, schools=schools,
+                                      dict_hh_len=dict_hh_len, dict_work_len=dict_work_len,
+                                      dict_school_len=dict_school_len, hh_id=hh_id, work_id=work_id,
+                                      school_id=school_id, age=age),
+                              range(number_of_launches))
+    
+    number_of_launches = 10
+    output_data = pd.DataFrame()
+    
+    total_results = [[] for i in range(number_of_launches)]
+    simulation(number_of_launches)
+    for i in range(number_of_launches):
+        total_results[i] = pd.read_csv(
+                out_path + r'incidence_{}.csv'.format(i))['data'].to_list()
+    sim_data = np.mean(total_results, axis=0)
+    output_data[r'alpha={},lambda={}'.format(alpha,lmbd)] = sim_data
+    output_data.to_csv(out_path + 'mean_results.txt')
     print(round((time.perf_counter() - start_all), 3), "sec")
+

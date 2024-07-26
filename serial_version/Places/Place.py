@@ -20,7 +20,7 @@ class Place:
         self.dict_place_len = place_len
         self.vfunc = None  # векторизованная функция вычисления заразности человека
         self.place_inf = None
-        self.x_rand = np.random.rand(10_000_000)
+        self.x_rand = np.random.rand(100_000_000)
         self.number_of_contacts = 3
 
         real_inf_place = None

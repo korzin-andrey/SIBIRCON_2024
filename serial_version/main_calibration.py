@@ -14,6 +14,7 @@ from functools import partial
 import warnings
 import multiprocessing as mp
 from multiprocessing import Process, Queue, current_process, freeze_support
+import matplotlib.pyplot as plt
 warnings.filterwarnings('ignore')
 pd.options.display.width = None
 pd.options.display.max_columns = None
@@ -169,12 +170,12 @@ def main(number_seed, out_path, susceptible, alpha, lmbd, init_infected, days,
 
 if __name__ == '__main__':
     np.random.seed(1)
-    alpha = 0.78
-    lmbd = 0.17
-    init_infected = 10
+    alpha = 0.4
+    lmbd = 0.3
+    # init_infected = 10
     days = 150
 
-    data_folder = 'chelyabinsk/'
+    data_folder = 'spb/'
     data_path = './data/' + data_folder
     out_path = './results/' + data_folder
 
@@ -212,21 +213,27 @@ if __name__ == '__main__':
 
     start_all = time.perf_counter()
 
-    number_of_launches = 8
+    number_of_launches = 10
 
     def objective_optuna(trial, real_data):
-        alpha = trial.suggest_float('alpha', 0, 1)
-        lmbd = trial.suggest_float('lmbd', 0, 1)
+        alpha = trial.suggest_float('alpha', 0.35, 0.45)
+        lmbd = trial.suggest_float('lmbd', 0.25, 0.35)
         total_results = [[] for i in range(number_of_launches)]
 
         simulation(number_of_launches)
         for i in range(number_of_launches):
             total_results[i] = pd.read_csv(
-                out_path + r'incidence_{}.csv'.format(i))['data'].to_numpy()
+                out_path + r'incidence_{}.csv'.format(i))['data'].to_list()
         sim_data = np.mean(total_results, axis=0)
-        mismatch = r2_score(real_data, sim_data)
+        plt.plot(real_data, '--o')
+        plt.plot(sim_data) 
+        plt.show()
+        mismatch = r2_score(real_data, sim_data[:len(real_data)])
         return mismatch
-
+    
+    epid_data = pd.read_csv(
+        './epid_data/SPb.COVID-19.united.csv')['CONFIRMED.sk'][670:770]
+    init_infected = epid_data.to_list()[0]
     def simulation(number_of_launches):
         with mp.Pool(number_of_launches) as pool:
             output = pool.map(partial(main, out_path=out_path, susceptible=susceptible, alpha=alpha,
@@ -237,10 +244,10 @@ if __name__ == '__main__':
                                       dict_school_len=dict_school_len, hh_id=hh_id, work_id=work_id,
                                       school_id=school_id, age=age),
                               range(number_of_launches))
-
+            
     study = optuna.create_study(direction='maximize')
     epid_data = pd.read_csv(
-        './epid_data/SPb.COVID-19.united.csv')['CONFIRMED.sk'][670:800]
+        './epid_data/SPb.COVID-19.united.csv')['CONFIRMED.sk'][670:770].to_list()
     days = len(epid_data)
     study.optimize(lambda trial: objective_optuna(trial, epid_data),
                    callbacks=[callback])
